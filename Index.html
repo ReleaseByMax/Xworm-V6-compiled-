@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XWorm V6 // C2 PANEL</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #00ff41;
+            --dark: #0a0a0a;
+            --panel: #111111;
+            --border: #1a1a1a;
+            --alert: #ff0040;
+            --warning: #ffaa00;
+            --telegram: #0088cc;
+        }
+
+        body {
+            background: var(--dark);
+            color: var(--primary);
+            font-family: 'Share Tech Mono', monospace;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* CRT Scanline Effect */
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(
+                rgba(18, 16, 16, 0) 50%,
+                rgba(0, 0, 0, 0.25) 50%
+            );
+            background-size: 100% 4px;
+            pointer-events: none;
+            z-index: 1000;
+            animation: scanline 8s linear infinite;
+        }
+
+        @keyframes scanline {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(10px); }
+        }
+
+        @keyframes flicker {
+            0% { opacity: 0.97; }
+            5% { opacity: 0.95; }
+            10% { opacity: 0.9; }
+            15% { opacity: 0.95; }
+            20% { opacity: 0.99; }
+            50% { opacity: 0.95; }
+            80% { opacity: 0.9; }
+            100% { opacity: 0.97; }
+        }
+
+        .container {
+            animation: flicker 0.15s infinite;
+            height: 100vh;
+            display: grid;
+            grid-template-columns: 250px 1fr 300px;
+            grid-template-rows: 60px 1fr 80px;
+            gap: 2px;
+            background: var(--border);
+        }
+
+        /* Header */
+        .header {
+            grid-column: 1 / -1;
+            background: var(--panel);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            border-bottom: 2px solid var(--primary);
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            text-shadow: 0 0 10px var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logo::before {
+            content: "◈";
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        .status-bar {
+            display: flex;
+            gap: 30px;
+            font-size: 12px;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--primary);
+            box-shadow: 0 0 10px var(--primary);
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        /* Sidebar */
+        .sidebar {
+            background: var(--panel);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            border-right: 1px solid var(--border);
+        }
+
+        .menu-title {
+            font-size: 11px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 10px;
+        }
+
+        .menu-btn {
+            background: transparent;
+            border: 1px solid var(--primary);
+            color: var(--primary);
+            padding: 12px;
+            font-family: inherit;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: left;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .menu-btn:hover:not(.processing):not(.error) {
+            background: var(--primary);
+            color: var(--dark);
+            box-shadow: 0 0 20px var(--primary);
+        }
+
+        .menu-btn.processing {
+            background: rgba(255, 170, 0, 0.2);
+            border-color: var(--warning);
+            color: var(--warning);
+            pointer-events: none;
+        }
+
+        .menu-btn.error {
+            background: rgba(255, 0, 64, 0.2);
+            border-color: var(--alert);
+            color: var(--alert);
+            animation: pulse 1s infinite;
+        }
+
+        .menu-btn.success {
+            background: rgba(0, 136, 204, 0.2);
+            border-color: var(--telegram);
+            color: var(--telegram);
+        }
+
+        /* Button Progress Bar ON THE BUTTON */
+        .btn-progress-container {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: rgba(0,0,0,0.5);
+            display: none;
+        }
+
+        .menu-btn.processing .btn-progress-container,
+        .action-btn.processing .btn-progress-container {
+            display: block;
+        }
+
+        .btn-progress-fill {
+            height: 100%;
+            background: var(--warning);
+            width: 0%;
+            transition: width 0.3s;
+        }
+
+        /* Main Content */
+        .main {
+            background: var(--panel);
+            padding: 20px;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .panel-title {
+            font-size: 18px;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+        }
+
+        /* Connection Grid */
+        .connection-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .victim-card {
+            background: rgba(0, 20, 0, 0.6);
+            border: 1px solid var(--primary);
+            padding: 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .victim-card:hover:not(.processing):not(.error) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(0, 255, 65, 0.2);
+        }
+
+        .victim-card.processing {
+            border-color: var(--warning);
+            background: rgba(255, 170, 0, 0.1);
+            pointer-events: none;
+        }
+
+        .victim-card.error {
+            border-color: var(--alert);
+            background: rgba(255, 0, 64, 0.1);
+            animation: shake 0.5s;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+
+        .victim-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .victim-id {
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .victim-status {
+            width: 6px;
+            height: 6px;
+            background: var(--primary);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        .victim-info {
+            font-size: 11px;
+            color: #888;
+            line-height: 1.6;
+        }
+
+        .victim-info span {
+            color: var(--primary);
+        }
+
+        .card-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.9);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .victim-card.processing .card-overlay,
+        .victim-card.error .card-overlay {
+            display: flex;
+        }
+
+        .card-spinner {
+            width: 30px;
+            height: 30px;
+            border: 3px solid var(--warning);
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        .card-error-icon {
+            font-size: 40px;
+            color: var(--alert);
+        }
+
+        .card-status-text {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Action Buttons Grid */
+        .actions-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .action-btn {
+            background: linear-gradient(135deg, #1a1a1a 0%, #0a0a0a 100%);
+            border: 1px solid #333;
+            color: #aaa;
+            padding: 20px;
+            font-family: inherit;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            position: relative;
+            overflow: hidden;
+            min-height: 80px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .action-btn:hover:not(.processing):not(.error):not(.license) {
+            border-color: var(--primary);
+            color: var(--primary);
+            box-shadow: inset 0 0 20px rgba(0, 255, 65, 0.1);
+        }
+
+        .action-btn.danger {
+            border-color: var(--alert);
+            color: var(--alert);
+        }
+
+        .action-btn.danger:hover:not(.processing):not(.error) {
+            background: rgba(255, 0, 64, 0.1);
+            box-shadow: inset 0 0 20px rgba(255, 0, 64, 0.2);
+        }
+
+        /* PROCESSING STATE ON BUTTON */
+        .action-btn.processing {
+            background: rgba(255, 170, 0, 0.15);
+            border-color: var(--warning);
+            color: var(--warning);
+            pointer-events: none;
+        }
+
+        .action-btn.processing .btn-icon {
+            animation: spin 1s linear infinite;
+        }
+
+        .action-btn.processing .btn-text::after {
+            content: "...";
+            animation: dots 1.5s infinite;
+        }
+
+        @keyframes dots {
+            0%, 20% { content: "."; }
+            40% { content: ".."; }
+            60%, 100% { content: "..."; }
+        }
+
+        /* ERROR STATE ON BUTTON */
+        .action-btn.error {
+            background: rgba(255, 0, 64, 0.15);
+            border-color: var(--alert);
+            color: var(--alert);
+            animation: shake 0.5s, pulse 2s infinite;
+        }
+
+        .action-btn.error .btn-icon::before {
+            content: "✖";
+        }
+
+        .action-btn.error .btn-text {
+            font-size: 10px;
+        }
+
+        /* LICENSE STATE ON BUTTON - SHOWS CONTACT */
+        .action-btn.license {
+            background: rgba(0, 136, 204, 0.15);
+            border-color: var(--telegram);
+            color: var(--telegram);
+            cursor: pointer;
+            pointer-events: auto;
+            animation: glow 2s infinite;
+        }
+
+        @keyframes glow {
+            0%, 100% { box-shadow: 0 0 5px var(--telegram); }
+            50% { box-shadow: 0 0 20px var(--telegram), 0 0 40px var(--telegram); }
+        }
+
+        .action-btn.license .btn-icon::before {
+            content: "✈️";
+        }
+
+        .action-btn.license .btn-text {
+            font-size: 11px;
+            font-weight: bold;
+        }
+
+        .btn-icon {
+            font-size: 20px;
+        }
+
+        .btn-telegram-user {
+            font-size: 10px;
+            color: var(--telegram);
+            margin-top: 5px;
+            text-decoration: underline;
+        }
+
+        /* Log Panel */
+        .log-panel {
+            background: var(--panel);
+            border-left: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .log-header {
+            padding: 15px;
+            background: rgba(0, 20, 0, 0.4);
+            border-bottom: 1px solid var(--border);
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .log-content {
+            flex: 1;
+            padding: 15px;
+            overflow-y: auto;
+            font-size: 11px;
+            line-height: 1.8;
+            color: #666;
+        }
+
+        .log-entry {
+            margin-bottom: 8px;
+            border-left: 2px solid var(--primary);
+            padding-left: 10px;
+            animation: fadeInLog 0.5s ease-in;
+        }
+
+        @keyframes fadeInLog {
+            from { opacity: 0; transform: translateX(-10px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        .log-time {
+            color: #444;
+        }
+
+        .log-msg {
+            color: #888;
+        }
+
+        .log-msg.success {
+            color: var(--primary);
+        }
+
+        .log-msg.error {
+            color: var(--alert);
+        }
+
+        .log-msg.warning {
+            color: var(--warning);
+        }
+
+        /* Footer */
+        .footer {
+            grid-column: 1 / -1;
+            background: var(--panel);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 30px;
+            font-size: 12px;
+            color: #444;
+            border-top: 2px solid var(--border);
+        }
+
+        .footer-telegram {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            background: rgba(0, 136, 204, 0.1);
+            border: 2px solid var(--telegram);
+            padding: 10px 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+        }
+
+        .footer-telegram:hover {
+            background: rgba(0, 136, 204, 0.2);
+            box-shadow: 0 0 20px rgba(0, 136, 204, 0.3);
+        }
+
+        .footer-telegram-icon {
+            font-size: 20px;
+        }
+
+        .footer-telegram-text {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .footer-telegram-label {
+            font-size: 10px;
+            color: #666;
+            text-transform: uppercase;
+        }
+
+        .footer-telegram-username {
+            font-size: 16px;
+            color: var(--telegram);
+            font-weight: bold;
+        }
+
+        /* Global Error Overlay */
+        .global-error-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.95);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+
+        .global-error-overlay.active {
+            display: flex;
+            animation: fadeIn 0.3s;
+        }
+
+        .global-error-box {
+            background: var(--panel);
+            border: 3px solid var(--alert);
+            padding: 40px;
+            text-align: center;
+            max-width: 500px;
+        }
+
+        .global-error-icon {
+            font-size: 60px;
+            color: var(--alert);
+            margin-bottom: 20px;
+        }
+
+        .global-error-title {
+            font-size: 24px;
+            color: var(--alert);
+            margin-bottom: 20px;
+            text-transform: uppercase;
+        }
+
+        .global-error-msg {
+            font-size: 16px;
+            color: #aaa;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+
+        .global-telegram-btn {
+            display: inline-block;
+            background: var(--telegram);
+            color: white;
+            padding: 15px 30px;
+            font-size: 18px;
+            text-decoration: none;
+            margin-bottom: 15px;
+            transition: all 0.3s;
+        }
+
+        .global-telegram-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 30px var(--telegram);
+        }
+
+        .global-close-btn {
+            background: transparent;
+            border: 1px solid #444;
+            color: #666;
+            padding: 10px 20px;
+            cursor: pointer;
+            font-family: inherit;
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--dark);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--primary);
+            border-radius: 4px;
+        }
+    </style>
+
+    <script>
+        // Audio context for disconnect sound
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+        function playDisconnectSound() {
+            try {
+                const oscillator = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
+
+                oscillator.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+
+                // Error buzzer sound
+                oscillator.type = 'sawtooth';
+                oscillator.frequency.setValueAtTime(200, audioCtx.currentTime);
+                oscillator.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.3);
+
+                gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+
+                oscillator.start(audioCtx.currentTime);
+                oscillator.stop(audioCtx.currentTime + 0.3);
+            } catch(e) {
+                console.log('Audio not available');
+            }
+        }
+
+        function playErrorBeep() {
+            try {
+                const oscillator = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
+
+                oscillator.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+
+                // Double beep for error
+                oscillator.type = 'square';
+                oscillator.frequency.setValueAtTime(800, audioCtx.currentTime);
+                oscillator.frequency.setValueAtTime(600, audioCtx.currentTime + 0.1);
+
+                gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime + 0.1);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.25);
+
+                oscillator.start(audioCtx.currentTime);
+                oscillator.stop(audioCtx.currentTime + 0.25);
+            } catch(e) {
+                console.log('Audio not available');
+            }
+        }
+    </script>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="logo">XWORM V6</div>
+            <div class="status-bar">
+                <div class="status-item">
+                    <div class="status-indicator"></div>
+                    <span>C2 SERVER: ONLINE</span>
+                </div>
+                <div class="status-item">
+                    <span>ENCRYPTION: AES-256</span>
+                </div>
+                <div class="status-item" style="color: var(--alert);">
+                    <span>⚠ UNLICENSED</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="menu-title">// Navigation</di
