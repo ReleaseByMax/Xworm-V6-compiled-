@@ -76,21 +76,7 @@ A compiled XWorm executable usually contains: - Core runtime code\
 
 Because all data is bundled internally, no additional configuration
 files are required.
-
-## 🔐 Security Risks & Warning
-
-XWorm is widely classified as potentially malicious software. Running
-unknown compiled executables may lead to: - Unauthorized remote access\
-- Data theft or surveillance\
-- System compromise\
-- Malware infection
-
-## ⚠️ Safety Tips
-
--   Do not execute files from untrusted sources\
--   Use updated antivirus and endpoint protection\
--   Analyze suspicious files in secure environments (e.g., sandbox)\
--   Keep your operating system and software updated
+ system and software updated
 
 ## For more information or support 
 https://t.me/SteelOwnerX
